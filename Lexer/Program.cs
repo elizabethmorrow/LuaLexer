@@ -25,7 +25,8 @@ namespace Lexer
 
                 foreach (Token token in tokenList)
                 {
-                    token.printType();
+                    token.PrintTrivia();
+                    token.PrintType();
                 }
 
                 // For debugging purposes

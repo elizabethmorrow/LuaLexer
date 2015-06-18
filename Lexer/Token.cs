@@ -3,41 +3,51 @@ using System.Collections.Generic;
 
 namespace Lexer
 {
-    public class Token
+    internal class Token
     {
-        public enum TokenType { KEYWORD, OPERATOR, IDENTIFIER, PUNCTUATION, BRACKET_OPEN, BRACKET_CLOSE, NUMBER, STRING, UNKNOWN }
+        public enum TokenType { Keyword, Operator, Identifier, Punctuation, BracketOpen, BracketClose, Number, String, UNKNOWN, EOF }
 
-        protected int _fullStart;
-        protected int _start;
-        protected int _length;
-        string _value;
-        protected TokenType _type;
-        protected List<Trivia> _leadingTrivia;
+        protected int fullStart;
+        protected int start;
+        protected int length;
+        protected string value;
+        protected TokenType type;
+        protected List<Trivia> leadingTrivia;
 
 
         public Token(TokenType tokentype, string value, List<Trivia> trivia)
         {
-            _type = tokentype;
-            _leadingTrivia = trivia;
-            _value = value;
+            this.type = tokentype;
+            this.leadingTrivia = trivia;
+            this.value = value;
         }
 
         // for debugging only
-        public void printType()
+        public void PrintType()
         {
-            Console.WriteLine(_type.ToString());
+            Console.Write(this.type.ToString() + ": ");
+            Console.WriteLine(value);
+        }
+
+        public void PrintTrivia()
+        {
+            foreach(Trivia trivia in leadingTrivia)
+            {
+                Console.Write("Trivia: " + trivia.trivia);
+            }
         }
     }
 
     // Currently subclasses not needed, might need as data model evolves
 
-    public class KeyWordToken : Token
+    /*public class KeywordToken : Token
     {
-        public KeyWordToken(TokenType tokentype, string value, List<Trivia> trivia) : base(tokentype, value, trivia)
+        public KeywordToken(TokenType tokentype, string value, List<Trivia> trivia) : base(tokentype, value, trivia)
         {
             // Initialize
             this._type = tokentype;
             this._leadingTrivia = trivia;
+            this._value = value;
         }
 
     }
@@ -83,5 +93,5 @@ namespace Lexer
             this._leadingTrivia = trivia;
         }
 
-    }
+    }*/
 }

@@ -1,6 +1,8 @@
 ﻿// Elizabeth Morrow 
 // Lua Lexer
-//TODO: peek 2 extension method, "skipped" tokens add to trivia rather than having unknown token
+//TODO: peek 2 extension method
+// "skipped" tokens add to trivia rather than having unknown token, 
+// jump tables for is valid character of any kind, whitespace, digit, letter/underscore
 
 using System;
 using System.Collections.Generic;
@@ -10,9 +12,9 @@ using System.IO;
 
 namespace Lexer
 {
-    class Lexer
+    internal class Lexer
     {
-        private static readonly HashSet<string> _keywords = new HashSet<string>
+        private static readonly HashSet<string> Keywords = new HashSet<string>
         {
             "and",
             "break",
@@ -38,46 +40,46 @@ namespace Lexer
             "while"
         };
 
-        private static readonly Dictionary<string, Token.TokenType> _symbols = new Dictionary<string, Token.TokenType>()
+        private static readonly Dictionary<string, Token.TokenType> Symbols = new Dictionary<string, Token.TokenType>
         {
-            { "-", Token.TokenType.OPERATOR },
-            { "~", Token.TokenType.OPERATOR },
-            { "#",Token.TokenType.OPERATOR },
-            {"~=",Token.TokenType.OPERATOR },
-            {"<=",Token.TokenType.OPERATOR },
-            {">=",Token.TokenType.OPERATOR },
-            {"==",Token.TokenType.OPERATOR },
-            {"+",Token.TokenType.OPERATOR },
-            {"*",Token.TokenType.OPERATOR },
-            {"/",Token.TokenType.OPERATOR },
-            {"//",Token.TokenType.OPERATOR },
-            {"^",Token.TokenType.OPERATOR },
-            {"%",Token.TokenType.OPERATOR },
-            {"&",Token.TokenType.OPERATOR },
-            {"|",Token.TokenType.OPERATOR },
-            {">>",Token.TokenType.OPERATOR },
-            {"<<",Token.TokenType.OPERATOR },
-            {"..",Token.TokenType.OPERATOR },
-            {">",Token.TokenType.OPERATOR },
-            {"<", Token.TokenType.OPERATOR },
-            {"=", Token.TokenType.OPERATOR },
+            { "-", Token.TokenType.Operator },
+            { "~", Token.TokenType.Operator },
+            { "#", Token.TokenType.Operator },
+            {"~=", Token.TokenType.Operator },
+            {"<=", Token.TokenType.Operator },
+            {">=", Token.TokenType.Operator },
+            {"==", Token.TokenType.Operator },
+            {"+", Token.TokenType.Operator },
+            {"*", Token.TokenType.Operator },
+            {"/", Token.TokenType.Operator },
+            {"//", Token.TokenType.Operator },
+            {"^", Token.TokenType.Operator },
+            {"%", Token.TokenType.Operator },
+            {"&", Token.TokenType.Operator },
+            {"|", Token.TokenType.Operator },
+            {">>", Token.TokenType.Operator },
+            {"<<", Token.TokenType.Operator },
+            {"..", Token.TokenType.Operator },
+            {">", Token.TokenType.Operator },
+            {"<", Token.TokenType.Operator },
+            {"=", Token.TokenType.Operator },
 
-            {"{", Token.TokenType.BRACKET_OPEN },
-            {"}", Token.TokenType.BRACKET_CLOSE },
-            {"(", Token.TokenType.BRACKET_OPEN },
-            {")", Token.TokenType.BRACKET_CLOSE },
-            {"[", Token.TokenType.BRACKET_OPEN },
-            {"]", Token.TokenType.BRACKET_CLOSE },
+            {"{", Token.TokenType.BracketOpen },
+            {"}", Token.TokenType.BracketClose },
+            {"(", Token.TokenType.BracketOpen },
+            {")", Token.TokenType.BracketClose },
+            {"[", Token.TokenType.BracketOpen },
+            {"]", Token.TokenType.BracketClose },
 
-            {".", Token.TokenType.PUNCTUATION},
-            {",", Token.TokenType.PUNCTUATION},
-            {";", Token.TokenType.PUNCTUATION},
-            {":", Token.TokenType.PUNCTUATION},
-            {"::", Token.TokenType.PUNCTUATION}
+            {".", Token.TokenType.Punctuation},
+            {",", Token.TokenType.Punctuation},
+            {";", Token.TokenType.Punctuation},
+            {":", Token.TokenType.Punctuation},
+            {"::", Token.TokenType.Punctuation}
         };
 
         private const char EOF = unchecked((char)-1);
-        private readonly char[] longCommentID1 = { '-', '[','['};
+        private readonly char[] longCommentID1 = { '-', '[','[' };
         private readonly char[] longCommentID2 = { '-', '[', '=' };
 
         public List<Token> Tokenize(StreamReader stream)
@@ -88,16 +90,14 @@ namespace Lexer
 
             while (!stream.EndOfStream)
             {
-                // use var (?)
-                trivia = ConsumeTrivia(stream);
+                trivia = this.ConsumeTrivia(stream);
                 
                 // TODO: return longest string of acceptable values (124fut return number 124)
-                nextToken = ReadNextToken(stream, trivia);
-
-                // Add to Token List
+                nextToken = this.ReadNextToken(stream, trivia);
+                
                 tokens.Add(nextToken);
             }
-
+            // check here for eof?
             // TODO: IEnum yield return
             return tokens;
         } 
@@ -106,7 +106,7 @@ namespace Lexer
         {
             if (stream.EndOfStream)
             {
-                return new Token(Token.TokenType.UNKNOWN, " ", trivia);
+                return new Token(Token.TokenType.EOF, "", trivia);
             }
 
             char nextChar = (char)stream.Peek();
@@ -114,26 +114,26 @@ namespace Lexer
             // Keyword or Identifier
             if (char.IsLetter(nextChar) || (nextChar == '_'))
             {
-                return readAlphaToken(stream, trivia);
+                return this.ReadAlphaToken(stream, trivia);
             }
             // Number
             else if (char.IsDigit(nextChar))
             {
-               return ReadNumberToken(stream, trivia);
+               return this.ReadNumberToken(stream, trivia);
             }
             // String
-            else if (isQuote(nextChar))
+            else if (IsQuote(nextChar))
             {
-                return ReadStringToken(stream, trivia);
+                return this.ReadStringToken(stream, trivia);
             }
             // Punctuation Bracket Operator
             else
             {
-                return ReadSymbolToken(stream, trivia);
+                return this.ReadSymbolToken(stream, trivia);
             } 
         }
 
-        private Token readAlphaToken(StreamReader stream, List<Trivia> trivia)
+        private Token ReadAlphaToken(StreamReader stream, List<Trivia> trivia)
         {
             // Keyword or Identifier
             char nextChar;
@@ -143,18 +143,17 @@ namespace Lexer
             {
                 word.Append((char)stream.Read());
                 nextChar = (char)stream.Peek();
-
-            } while (isValidAlpha(nextChar));
+            } while (this.IsAlphaCharacter(nextChar));
 
             string value = word.ToString();
 
-            if (_keywords.Contains(value))
+            if (Keywords.Contains(value))
             {
-                return new KeyWordToken(Token.TokenType.KEYWORD, value, trivia);
+                return new Token(Token.TokenType.Keyword, value, trivia);
             }
             else
             {
-                return new IdentifierToken(Token.TokenType.IDENTIFIER, value, trivia);
+                return new Token(Token.TokenType.Identifier, value, trivia);
             }
 
         }
@@ -168,19 +167,19 @@ namespace Lexer
             // bool isHex;
             // TODO: verify only one decimal point
 
-            while (IsValidNumber(next)) 
+            while (this.IsValidNumber(next)) 
             {
                 number.Append((char)stream.Read());
                 next = (char)stream.Peek();
             }
 
-            if (IsValidTerminator(next))
+            if (this.IsValidTerminator(next))
             {
-                return new NumberToken(Token.TokenType.NUMBER, number.ToString(), trivia);
+                return new Token(Token.TokenType.Number, number.ToString(), trivia);
             }
             else
             {
-                return new UnknownToken(Token.TokenType.NUMBER, number.ToString(), trivia);
+                return new Token(Token.TokenType.UNKNOWN, number.ToString(), trivia);
             }
         }
 
@@ -202,11 +201,11 @@ namespace Lexer
                     if (nextChar == '"')
                     {
                         fullString.Append((char)stream.Read());
-                        return new StringToken(Token.TokenType.STRING, fullString.ToString(), leadingTrivia);
+                        return new Token(Token.TokenType.String, fullString.ToString(), leadingTrivia);
                     }
                     else
                     {
-                        return new UnknownToken(Token.TokenType.STRING, fullString.ToString(), leadingTrivia);
+                        return new Token(Token.TokenType.UNKNOWN, fullString.ToString(), leadingTrivia);
                     }
                 case '\'':
                     do
@@ -218,49 +217,86 @@ namespace Lexer
 
                     if (nextChar == '\'')
                     {
-                        return new StringToken(Token.TokenType.STRING, fullString.ToString(), leadingTrivia);
+                        return new Token(Token.TokenType.String, fullString.ToString(), leadingTrivia);
                     }
                     else
                     {
-                        return new UnknownToken(Token.TokenType.STRING, fullString.ToString(), leadingTrivia);
+                        return new Token(Token.TokenType.UNKNOWN, fullString.ToString(), leadingTrivia);
                     }
                 default:
-                    return new UnknownToken(Token.TokenType.STRING, fullString.ToString(), leadingTrivia);
+                    return new Token(Token.TokenType.UNKNOWN, fullString.ToString(), leadingTrivia);
             }
         }
 
         private Token ReadSymbolToken(StreamReader stream, List<Trivia> leadingTrivia)
         {
-            StringBuilder symbol = new StringBuilder();
-            string fullSymbol;
             char nextChar = (char)stream.Read();
 
-            while (char.IsSymbol(nextChar))
+            switch (nextChar)
             {
-                symbol.Append(nextChar);
-                nextChar = (char)stream.Peek();
+                case ':':
+                case '.':
+                    // here use dictionary for minux, plus etc
+                    if(nextChar != (char)stream.Peek())
+                    {
+                        return new Token(Token.TokenType.Punctuation, nextChar.ToString(), leadingTrivia);
+                    }
+                    else
+                    {
+                        char[] symbol = { nextChar, nextChar };
+                        return new Token(Token.TokenType.Punctuation, symbol.ToString(), leadingTrivia);
+                    }
+                case '<':
+                case '>':
+                    // could be doubles or eq signs
+                    if ((nextChar != (char)stream.Peek()) && ((char)stream.Peek()!= '='))
+                    {
+                        return new Token(Token.TokenType.Operator, nextChar.ToString(), leadingTrivia);
+                    }
+                    else
+                    {
+                        char secondOperatorChar = (char)stream.Read();
+                        char[] symbol = { nextChar, secondOperatorChar };
+                        return new Token(Token.TokenType.Operator, symbol.ToString(), leadingTrivia);
+                    }
+                case '=':
+                case '/':
+                    if (nextChar != (char)stream.Peek())
+                    {
+                        return new Token(Token.TokenType.Operator, nextChar.ToString(), leadingTrivia);
+                    }
+                    else
+                    {
+                        char[] symbol = { nextChar, nextChar };
+                        return new Token(Token.TokenType.Operator, symbol.ToString(), leadingTrivia);
+                    }
+                case '~':
+                    if ((char)stream.Peek() != '=')
+                    {
+                        return new Token(Token.TokenType.Operator, nextChar.ToString(), leadingTrivia);
+                    }
+                    else
+                    {
+                        char[] symbol = { nextChar, '=' };
+                        return new Token(Token.TokenType.Operator, symbol.ToString(), leadingTrivia);
+                    }
+                default:
+                    // non repeating symbol
+                    string fullSymbol = nextChar.ToString();
+                    if (Symbols.ContainsKey(fullSymbol))
+                    {
+                        return new Token(Symbols[fullSymbol], fullSymbol, leadingTrivia);
+                    }
+                    else
+                    {
+                        return new Token(Token.TokenType.UNKNOWN, fullSymbol, leadingTrivia);
+                    }
             }
-
-            fullSymbol = symbol.ToString();
-
-            if (_symbols.ContainsKey(fullSymbol))
-            {
-                return new Token(_symbols[fullSymbol], fullSymbol, leadingTrivia);
-            }
-            else
-            {
-                return new UnknownToken(Token.TokenType.UNKNOWN, fullSymbol, leadingTrivia);
-            }
-
         }
 
-        private bool isValidAlpha(char a)
+        private bool IsAlphaCharacter(char a)
         {
-            if(Char.IsLetter(a) || Char.IsNumber(a) || (a == '_')){
-                return true;
-            }
-            else
-                return false;
+            return (char.IsLetter(a) || char.IsNumber(a) || (a == '_'));
         }
 
         private List<Trivia> ConsumeTrivia(StreamReader stream)
@@ -315,11 +351,11 @@ namespace Lexer
 
                             if (currentCommentID.SequenceEqual(longCommentID1) || (currentCommentID.SequenceEqual(longCommentID2)))
                             {
-                                triviaList.Add(readLongComment(stream, currentCommentID));
+                                triviaList.Add(ReadLongComment(stream, currentCommentID));
                             }
                             else
                             {
-                                triviaList.Add(readLineComment(stream, currentCommentID));
+                                triviaList.Add(ReadLineComment(stream, currentCommentID));
                             }
                         }
                         else
@@ -363,26 +399,26 @@ namespace Lexer
                 case ' ':
                 case '\n':
                 case '\t':
-                case EOF:
+                case Lexer.EOF:
                     return true;
                 default:
                     return false;
             }
         }
 
-        bool isQuote(char nextChar)
+        bool IsQuote(char nextChar)
         {
             return ((nextChar == '"') || (nextChar == '\''));
         }
 
-        Trivia readLineComment(StreamReader stream, char[] commentRead)
+        Trivia ReadLineComment(StreamReader stream, char[] commentRead)
         {
-            string comment = new string(commentRead);
+            string comment = "-" + commentRead;
             comment += stream.ReadLine();
-            return new Trivia(Trivia.TriviaType.COMMENT, string.Concat("-", comment));
+            return new Trivia(Trivia.TriviaType.COMMENT, comment);
         }
 
-        Trivia readLongComment(StreamReader stream, char[] commentRead)
+        Trivia ReadLongComment(StreamReader stream, char[] commentRead)
         {
             StringBuilder comment = new StringBuilder();
             comment.Append("-").Append(commentRead);
@@ -390,14 +426,14 @@ namespace Lexer
             int level = 0;
             char next;
 
-            switch (commentRead[(commentRead.Length - 1)])
+            switch (commentRead[commentRead.Length - 1])
             {
                 case '=':
                     level++;
                     next = (char)stream.Peek();
 
                     // Get levels (=) 
-                    while(next == '=')
+                    while (next == '=')
                     {
                         comment.Append((char)stream.Read());
                         level++;
@@ -445,14 +481,14 @@ namespace Lexer
                         // TODO: fix that double type cast
                         char[] alreadyConsumed = comment.ToString().ToCharArray();
 
-                        return readLineComment(stream, alreadyConsumed);
+                        return ReadLineComment(stream, alreadyConsumed);
                     }
 
                     break;
                 case '[':
                     comment.Append((char)stream.Read());
                     char[] validEnd = { ']', ']' };
-                    char[] currentEnd = { };
+                    char[] currentEnd = new char[validEnd.Length];
                     stream.Read(currentEnd, 0, validEnd.Length);
 
                     while(currentEnd != validEnd)
@@ -468,9 +504,10 @@ namespace Lexer
             return new Trivia(Trivia.TriviaType.COMMENT, comment.ToString());
         }
 
-        bool IsValidNumber(char next)
+        bool IsValidNumber(char character)
         {
-            return (char.IsDigit(next) || (next == '.') || (next == 'e') || (next == 'x'));
+            // switch 1-9, . , e, x
+            return (char.IsDigit(character) || (character == '.') || (character == 'e') || (character == 'x'));
         }
     }
 }

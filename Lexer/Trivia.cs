@@ -4,14 +4,14 @@
     {
         public enum TriviaType { WHITESPACE, COMMENT, NEWLINE} // TODO: skippedtoken
 
-        TriviaType _type;
-        string _trivia;
+        protected TriviaType type;
+        public string trivia;
 
         public Trivia(TriviaType type, string trivia)
         {
             // initialize
-            _type = type;
-            _trivia = trivia;
+            this.type = type;
+            this.trivia = trivia;
         }
     }
 }
