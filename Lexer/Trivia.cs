@@ -2,7 +2,7 @@
 {
     public class Trivia
     {
-        public enum TriviaType { WHITESPACE, COMMENT, NEWLINE} // TODO: skippedtoken
+        public enum TriviaType { Whitespace, Comment, Newline} // TODO: skippedtoken
 
         protected TriviaType type;
         public string trivia;

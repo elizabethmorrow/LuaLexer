@@ -3,6 +3,7 @@
 //TODO: peek 2 extension method
 // "skipped" tokens add to trivia rather than having unknown token, 
 // jump tables for is valid character of any kind, whitespace, digit, letter/underscore
+// use stream not streamreader
 
 using System;
 using System.Collections.Generic;
@@ -186,7 +187,7 @@ namespace Lexer
         private Token ReadStringToken(StreamReader stream, List<Trivia> leadingTrivia)
         {
             StringBuilder fullString = new StringBuilder();
-            char nextChar = (char)stream.Read();
+            char nextChar = (char)stream.Peek(); 
 
             switch (nextChar)
             {
@@ -196,7 +197,7 @@ namespace Lexer
                         fullString.Append((char)stream.Read());
                         nextChar = (char)stream.Peek();
 
-                    } while (nextChar != '"' && !stream.EndOfStream);
+                    } while ((nextChar != '"') && !stream.EndOfStream);
 
                     if (nextChar == '"')
                     {
@@ -223,8 +224,100 @@ namespace Lexer
                     {
                         return new Token(Token.TokenType.UNKNOWN, fullString.ToString(), leadingTrivia);
                     }
+                // case '[':
                 default:
-                    return new Token(Token.TokenType.UNKNOWN, fullString.ToString(), leadingTrivia);
+                    fullString.Append((char)stream.Read());
+                    bool terminated = false;
+                    switch ((char)stream.Peek())
+                    {
+                        case '[':
+                            fullString.Append((char)stream.Read());
+
+                            nextChar = (char)stream.Peek();
+
+                            while (!terminated && !stream.EndOfStream)
+                            {
+                                if(nextChar == ']')
+                                {
+                                    fullString.Append((char)stream.Read());
+                                    nextChar = (char)stream.Peek();
+                                    if (nextChar == ']')
+                                    {
+                                        fullString.Append((char)stream.Read());
+                                        terminated = true;
+                                    }
+                                    else
+                                    {
+                                        fullString.Append((char)stream.Read());
+                                        nextChar = (char)stream.Peek();
+                                    }
+
+                                }
+                                else
+                                {
+                                    fullString.Append((char)stream.Read());
+                                    nextChar = (char)stream.Peek();
+                                }
+                            }
+                            return new Token(Token.TokenType.String, fullString.ToString(), leadingTrivia);
+                        case '=':
+                            fullString.Append((char)stream.Read());
+                            int level = 1;
+                            
+                            nextChar = (char)stream.Peek();
+
+                            // Get levels (=) 
+                            while (nextChar == '=')
+                            {
+                                fullString.Append((char)stream.Read());
+                                level++;
+                                nextChar = (char)stream.Peek();
+                            }
+
+                            if(nextChar == '[')
+                            {
+                                fullString.Append((char)stream.Read());
+                                nextChar = (char)stream.Peek();
+
+                                while (!terminated && !stream.EndOfStream)
+                                {
+                                    if(nextChar == ']')
+                                    {
+                                        fullString.Append((char)stream.Read());
+                                        nextChar = (char)stream.Peek();
+                                        int currentLevel = level;
+
+                                        while(nextChar == '=')
+                                        {
+                                            fullString.Append((char)stream.Read());
+                                            level--;
+                                            nextChar = (char)stream.Peek();
+                                        }
+
+                                        if((nextChar == ']') && (level == 0) )
+                                        {
+                                            fullString.Append((char)stream.Read());
+                                            return new Token(Token.TokenType.String, fullString.ToString(), leadingTrivia);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        fullString.Append((char)stream.Read());
+                                    }
+                                    nextChar = (char)stream.Peek();
+                                }
+
+                                return new Token(Token.TokenType.String, fullString.ToString(), leadingTrivia);
+
+                            }
+                            else
+                            {
+                                // Error, not valid syntax
+                                return new Token(Token.TokenType.UNKNOWN, fullString.ToString(), leadingTrivia);
+                            }
+                        default:
+                            return new Token(Token.TokenType.BracketOpen, nextChar.ToString(), leadingTrivia);
+                    }
             }
         }
 
@@ -248,7 +341,7 @@ namespace Lexer
                     }
                 case '<':
                 case '>':
-                    // could be doubles or eq signs
+                    // could be doubles or eq sign
                     if ((nextChar != (char)stream.Peek()) && ((char)stream.Peek()!= '='))
                     {
                         return new Token(Token.TokenType.Operator, nextChar.ToString(), leadingTrivia);
@@ -320,7 +413,7 @@ namespace Lexer
 
                     case '\n':
                         isTrivia = true;
-                        Trivia newLineTrivia = new Trivia(Trivia.TriviaType.NEWLINE, next.ToString());
+                        Trivia newLineTrivia = new Trivia(Trivia.TriviaType.Newline, next.ToString());
                         triviaList.Add(newLineTrivia);
                         break;
 
@@ -334,7 +427,7 @@ namespace Lexer
                             stream.Read();
                         }
 
-                        Trivia returnTrivia = new Trivia(Trivia.TriviaType.NEWLINE, Environment.NewLine);
+                        Trivia returnTrivia = new Trivia(Trivia.TriviaType.Newline, Environment.NewLine);
                         triviaList.Add(returnTrivia);
                         break;
 
@@ -362,8 +455,6 @@ namespace Lexer
                         {
                             isTrivia = false;
                             
-                            //TODO: Write extension method to peek 2 ahead
-                            
                             stream.BaseStream.Position--;
                         }
                         break;
@@ -388,7 +479,7 @@ namespace Lexer
                 whitespace.Append((char)stream.Read());
             }
 
-            return new Trivia(Trivia.TriviaType.WHITESPACE, whitespace.ToString());
+            return new Trivia(Trivia.TriviaType.Whitespace, whitespace.ToString());
         }
         
         bool IsValidTerminator(char next)
@@ -408,14 +499,14 @@ namespace Lexer
 
         bool IsQuote(char nextChar)
         {
-            return ((nextChar == '"') || (nextChar == '\''));
+            return ((nextChar == '"') || (nextChar == '\'') || (nextChar == '['));
         }
 
         Trivia ReadLineComment(StreamReader stream, char[] commentRead)
         {
             string comment = "-" + commentRead;
             comment += stream.ReadLine();
-            return new Trivia(Trivia.TriviaType.COMMENT, comment);
+            return new Trivia(Trivia.TriviaType.Comment, comment);
         }
 
         Trivia ReadLongComment(StreamReader stream, char[] commentRead)
@@ -465,10 +556,8 @@ namespace Lexer
                                 {
                                     comment.Append((char)stream.Read());
                                     level = 0;
-                                    return new Trivia(Trivia.TriviaType.COMMENT, comment.ToString());
+                                    return new Trivia(Trivia.TriviaType.Comment, comment.ToString());
                                 }
-                                
-                                // TODO: speed this up, fix the condition in the while (bool commentClosed?)
                             }
                             else
                             {
@@ -498,10 +587,10 @@ namespace Lexer
                     }
 
                     comment.Append(currentEnd);
-                    return new Trivia(Trivia.TriviaType.COMMENT, comment.ToString());
+                    return new Trivia(Trivia.TriviaType.Comment, comment.ToString());
             }
 
-            return new Trivia(Trivia.TriviaType.COMMENT, comment.ToString());
+            return new Trivia(Trivia.TriviaType.Comment, comment.ToString());
         }
 
         bool IsValidNumber(char character)
