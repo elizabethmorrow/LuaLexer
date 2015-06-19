@@ -218,6 +218,7 @@ namespace Lexer
 
                     if (nextChar == '\'')
                     {
+                        fullString.Append((char)stream.Read());
                         return new Token(Token.TokenType.String, fullString.ToString(), leadingTrivia);
                     }
                     else
@@ -294,7 +295,7 @@ namespace Lexer
                                             nextChar = (char)stream.Peek();
                                         }
 
-                                        if((nextChar == ']') && (level == 0) )
+                                        if((nextChar == ']') && (level == 0))
                                         {
                                             fullString.Append((char)stream.Read());
                                             return new Token(Token.TokenType.String, fullString.ToString(), leadingTrivia);
